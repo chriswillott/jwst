@@ -9,3 +9,4 @@ makedarknoisefilesgdq.py makes dark current and noise images from darks, optiona
 
 getipc.py determines a 5x5 IPC kernel image based on spread of charge from hot pixels.
 
+fitpomdefects.py takes in direct and dispersed NIRISS WFSS flat field images to identify features of low transmission on the NIRISS pick-off mirror, including the coronagraphic spots. The outputs are maps of the features and images of intensity decrease due to the features. 
