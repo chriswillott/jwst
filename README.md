@@ -9,7 +9,8 @@ The routine is robust to high rates of cosmic rays and separates cosmic ray hits
 
 <b>getipc.py</b> determines a 5x5 IPC kernel image based on spread of charge from hot pixels.
 
-<b>fitpomdefects.py</b> takes in direct and dispersed NIRISS WFSS flat field images to identify features of low transmission on the NIRISS pick-off mirror, including the coronagraphic spots. The two outputs are a mask map of the features and an image of transmission due to the features. The detection direct image flat is usually F115W because this is best to detect the features. Due to the wavelength-dependence of flux loss the filter of the measure direct image flat is usually the output filter.in direct and dispersed NIRISS WFSS flat field images to identify features of low transmission on the NIRISS pick-off mirror, including the coronagraphic spots. The outputs are maps of the features and images of intensity decrease due to the features. 
+<b>makenirissimagingflats.py</b> generates NIRISS imaging flat fields for all filters from one or more integrations per filter that have passed through level 1 pipeline processing.
 
-<b>patchgrismflats.py</b> generates NIRISS WFSS grism flat field by correcting the imaging flat with the POM transmission file.
-Coronagraphic spots have too low S/N in POM transmission image so will replace with regions from locally normalized grism flats. Use the F150W grism flats that separate out the dispersed spectra and direct images of sources for all filters.
+
+<b>makenirissgrismflats.py</b> takes in direct (for all filters) and dispersed (cuurently only F115W and F150W are required) NIRISS WFSS flat field images to identify features of low transmission on the NIRISS pick-off mirror (POM), including the coronagraphic spots. The outputs per filter are an image of POM transmission due to the features and grism flat field reference files. These grism flats are equal to the imaging flats over most of the detector, but with all the POM features corrected leaving only the detector response.
+
