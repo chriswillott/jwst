@@ -5,7 +5,7 @@
 #Normalize, sigma clip and combine multiple flat integrations/exposures.
 #The flat field will be normalized to a sigma-clipped average value of one as per the CALWEBB_IMAGE2 definition.
 #No surface fitting to account for uneven illumination is applied since the CV3 OSIM illumination pattern is unknown.
-#Three unusual blob regions in some filter images are replaced with the F200W flat that doesn't show them. 
+#Four unusual blob regions in some filter images are replaced with the F200W flat that doesn't show them. 
 #Inputs: place all flat field slope_rateints.fits and/or slope_rate.fits files in one sub-directory per filter under the input directory indir, e.g. ./slope/F150W/
 #Outputs: final flat field images will be output to one sub-directory per filter under the output directory, e.g. ./imageflatreffiles/F150W/
 
@@ -183,7 +183,6 @@ for l in range(numfilters):
 
     if numfiles>0:
         for j in range(numfiles):
-
             #Read in file
             slopefile=os.path.join(filterdir,dirlist[j])
             instrument, detector = bad_pixel_mask.instrument_info(slopefile)
@@ -216,7 +215,7 @@ for l in range(numfilters):
                     normerr3d=normerr
                 else:
                     normdata3d=np.dstack((normdata3d,normdata))
-                    normerr3d=np.dstack((normerr3d,normdata))
+                    normerr3d=np.dstack((normerr3d,normerr))
 
         #Combine stacks clipping outliers and masked arrays
         #If 10 or more total integrations use sigma clipping with sigma=3.0 where sigma is std dev from all integrations
@@ -228,7 +227,6 @@ for l in range(numfilters):
             meddata3d=np.median(normdata3d,axis=2,keepdims=True)
             datadiffs=normdata3d-meddata3d
             datadiffsdiverr=datadiffs/normerr3d
-            print (datadiffsdiverr[1515,1918,:])
             datadiffsdiverrmasked=np.ma.masked_greater_equal(datadiffsdiverr,numsigma)
             clippeddata3d=np.ma.masked_array(normdata3d,datadiffsdiverrmasked.mask)
             clippederr3d=np.ma.masked_array(normerr3d,clippeddata3d.mask)
@@ -236,7 +234,6 @@ for l in range(numfilters):
             numsigma=3.0
             clippeddata3d=sigma_clip(normdata3d,sigma=numsigma,maxiters=2,axis=2,cenfunc='median')
             clippederr3d=np.ma.masked_array(normerr3d,clippeddata3d.mask)
-        print (normdata3d[1515,1918,:],clippeddata3d[1515,1918,:],clippederr3d[1515,1918,:])
         #For data array use mean of clipped array
         meanclippeddata=np.ma.mean(clippeddata3d,axis=2)
         #For error array add errors in quadrature and divide by number of unmasked samples
@@ -311,9 +308,9 @@ for l in range(numfilters):
         refpix[:,:4]=1   
         refpix[:,2044:]=1
        
-        #Set all reference pixels to zero
-        normdata[np.where(refpix==1)]=0.0
-        normerr[np.where(refpix==1)]=0.0
+        #Set all reference pixels to one
+        normdata[np.where(refpix==1)]=1.0
+        normerr[np.where(refpix==1)]=1.0
 
         #Set all negative pixels to zero
         normerr[np.where(normdata<0.0)]=0.0
