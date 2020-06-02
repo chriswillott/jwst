@@ -524,7 +524,7 @@ for l in range(numfilters):
     refpix[:,:4]=1   
     refpix[:,2044:]=1
 
-    #Set all reference pixels to zero
+    #Set all reference pixels to one
     measuredata[np.where(refpix==1)]=1.0
     measureerr[np.where(refpix==1)]=1.0
 
