@@ -462,8 +462,7 @@ for l in range(numfilters):
     ##################################################### 
     #Start grism flat field reference file making
     
-    #invertpomtransmission=1.0-pomtransmission
-
+    print ('Starting grism flat field generation')
     #Do correction for all POM features using POM transmission image
     measuredata/=pomtransmission
     measureerr/=pomtransmission
@@ -526,8 +525,8 @@ for l in range(numfilters):
     refpix[:,2044:]=1
 
     #Set all reference pixels to zero
-    measuredata[np.where(refpix==1)]=0.0
-    measureerr[np.where(refpix==1)]=0.0
+    measuredata[np.where(refpix==1)]=1.0
+    measureerr[np.where(refpix==1)]=1.0
 
     #Set all negative pixels to zero
     measureerr[np.where(measuredata<0.0)]=0.0
