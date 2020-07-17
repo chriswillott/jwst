@@ -10,13 +10,14 @@
 #The POM feature 'measure' direct image flat is usually the output filter due to the wavelength-dependence of flux loss.  
 #The four coronagraphic spots have too low S/N in the POM transmission image so will replace with regions from locally normalized  F150W grism flats.
 #A bad pixel mask reference file is required so that interpolation is applied across bad pixels.
+#The outline of the rotated POM in the oversized field determined from the F200W dispersed flats. Must contain keywords OFFSETX & OFFSETY. 
 #Outputs:
 #Final grism flat field images will be output to one sub-directory per filter under the output directory, e.g. ./grismflatreffiles/F150W/
 #A POM transmission file is output in the same directory. This file is used to model sources in WFSS images.
 #The parameter ngrow (default=1) is the number of pixels by which to grow the segmentation map of each detected source.
 
 #Usage:
-#makenirissgrismflats.py  --indirimage='./imageflatreffiles' --indirgrism='./grismflatinputs'  --mask='/Users/willottc/niriss/detectors/willott_reference_files/nocrs/jwst_niriss_cv3_38k_nocrs_bpm_minimal.fits' --outdir='./grismflatreffiles'  --ngrow=1
+#makenirissgrismflats.py  --indirimage='./imageflatreffiles' --indirgrism='./grismflatinputs'  --mask='/Users/willottc/niriss/detectors/willott_reference_files/nocrs/jwst_niriss_cv3_38k_nocrs_bpm_minimal.fits' --pomoutline='./plots/pomoutlinecv3flats_f200w.fits' --outdir='./grismflatreffiles'  --ngrow=1
 
 import numpy as np
 from scipy import ndimage
@@ -36,6 +37,7 @@ op = optparse.OptionParser()
 op.add_option("--indirimage")
 op.add_option("--indirgrism")
 op.add_option("--mask")
+op.add_option("--pomoutline")
 op.add_option("--outdir")
 op.add_option("--ngrow")
 
@@ -47,6 +49,7 @@ if a:
 indirimage=o.indirimage
 indirgrism=o.indirgrism
 maskfile=o.mask
+pomoutlinefile=o.pomoutline
 outdir=o.outdir
 ngrow=o.ngrow
 if ngrow==None:
@@ -55,16 +58,16 @@ if ngrow==None:
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-def save_final_map(flat_map, flat_dq, flat_err, dqdef, instrument, detector, hdulist, filterdir, grism, files,
-                       author, description, pedigree,useafter, fpatemp, history_text, outfile):
-    """Save a flat field map into a CRDS-formatted reference file
+def save_final_map(datamap, dq, err, dqdef, instrument, detector, hdulist, filterdir, grism, files,
+                       author, description, pedigree,useafter, fpatemp, history_text, pomoutlineoffsetx, pomoutlineoffsety, ngrow, outfile):
+    """Save a flat field or POM transmission map into a CRDS-formatted reference file
     Parameters
     ----------
-    flat_map : numpy.ndarray
+    datamap : numpy.ndarray
         2D flat-field array
-    flat_dq : numpy.ndarray
+    dq : numpy.ndarray
         2D flat-field DQ array
-    flat_err : numpy.ndarray
+    err : numpy.ndarray
         2D flat-field error array
     dqdef : numpy.ndarray
         binary table of DQ definitions
@@ -93,14 +96,20 @@ def save_final_map(flat_map, flat_dq, flat_err, dqdef, instrument, detector, hdu
     outfile : str
         Name of the output reference file
     """
-    yd, xd = flat_map.shape
+    yd, xd = datamap.shape
 
-    # Initialize the MaskModel using the hdu_list, so the new keywords will
+    # For now use FlatModel for the POM transmission as well so don't have to define a new model.
+    # Initialize the FlatModel using the hdu_list, so the new keywords will
     # be populated
-    model = FlatModel(hdulist)
-    model.data = flat_map
-    model.dq = flat_dq
-    model.err = flat_err
+    if 'flat' in description:
+        model = FlatModel(hdulist)
+        model.meta.reftype = 'FLAT'
+    elif 'transmission' in description:
+        model = FlatModel(hdulist)
+        model.meta.reftype = 'TRANSMISSION'
+    model.data = datamap
+    model.dq = dq
+    model.err = err
     model.dq_def = dqdef
 
     #Load a file to get some header info
@@ -108,7 +117,6 @@ def save_final_map(flat_map, flat_dq, flat_err, dqdef, instrument, detector, hdu
     filterwheel=primaryheader['FILTER']                           
     pupilwheel=primaryheader['PUPIL']                           
     
-    model.meta.reftype = 'FLAT'
     model.meta.subarray.name = 'FULL'
     model.meta.subarray.xstart = 1
     model.meta.subarray.xsize = xd
@@ -128,16 +136,24 @@ def save_final_map(flat_map, flat_dq, flat_err, dqdef, instrument, detector, hdu
     model.meta.subarray.fastaxis = fastaxis
     model.meta.subarray.slowaxis = slowaxis
 
+    if 'transmission' in description:
+        model.meta.offsetx=pomoutlineoffsetx
+        model.meta.offsety=pomoutlineoffsety
+        
     model.meta.author = author
     model.meta.description = description
     model.meta.pedigree = pedigree
-    model.meta.useafter = useafter    
+    model.meta.useafter = useafter
+    
 
     # Add HISTORY information
-    package_note = ('This file was created using https://github.com/chriswillott/jwst/blob/master/makenirissimagingflats.py')    
+    package_note = ('This file was created using https://github.com/chriswillott/jwst/blob/master/makenirissgrismflats.py')    
     entry = util.create_history_entry(package_note)
     model.history.append(entry)
     package_note = ('FPA Temperature={}K'.format(fpatemp))    
+    entry = util.create_history_entry(package_note)
+    model.history.append(entry)
+    package_note = ('Number of pixels to grow POM features={}'.format(ngrow))    
     entry = util.create_history_entry(package_note)
     model.history.append(entry)
 
@@ -160,14 +176,17 @@ def save_final_map(flat_map, flat_dq, flat_err, dqdef, instrument, detector, hdu
             model.history.append(util.create_history_entry(history_entry))
 
     model.save(outfile, overwrite=True)
-    print('Final flat reference file save to: {}'.format(outfile))
+    print('Final reference file save to: {}'.format(outfile))
 
+    #Add the offsetx and offsety values manually since no schema yet for transmission files
+    if 'transmission' in description:
+        fits.setval(outfile, 'OFFSETX', value=pomoutlineoffsetx, ext=0, after='SLOWAXIS', comment='Transmision map-detector offset in x pixels')
+        fits.setval(outfile, 'OFFSETY', value=pomoutlineoffsety, ext=0, after='OFFSETX', comment='Transmision map-detector offset in y pixels')
 
 ###Main program###
 
 #Information for file header    
 author='Chris Willott'
-description='This is a pixel flat reference file.'
 pedigree= 'GROUND  '
 useafter= '2015-11-01T00:00:00'
 
@@ -239,18 +258,17 @@ for l in range(numfilters):
     else:
         fpatemp=37.749
 
-    print (l,filterdirlist)    
     filterdir=os.path.join(indirimage,filterdirlist[l])
     dirlist=natsort.natsorted(os.listdir(filterdir))
     dirlist[:] = (value for value in dirlist if value.endswith('.fits'))
     numfiles=len(dirlist)
     print(' ')
-    print ('Filter=',filterdirlist[l])
+    print (l, 'Filter=',filterdirlist[l])
 
     #Read in file
     measureflatfile=os.path.join(filterdir,dirlist[0])
     instrument, detector = bad_pixel_mask.instrument_info(measureflatfile)
-    print ('Processing file ',dirlist[0])
+    print ('Processing file',dirlist[0])
     hdulistmeasure=fits.open(measureflatfile)
     measurepriheader=hdulistmeasure[0].header
     measuresciheader=hdulistmeasure['SCI'].header
@@ -263,6 +281,8 @@ for l in range(numfilters):
     normalizemeasure=np.median(measureactivedata)
     normalizegr150c=np.median(gr150cdetectactivedata)
     normalizegr150r=np.median(gr150rdetectactivedata)
+
+    print ('Starting POM transmission generation')
 
     #According to Kevin Volk's CV3 report JWST-STScI-004825 all filters have <0.5 pixel shift w.r.t. F115W except F200W.
     #For F200W need to shift POM map by 1,2 pixels.
@@ -395,9 +415,9 @@ for l in range(numfilters):
         coro_obj_mask_corr=2.0*coro_obj_mask.data
         pomintens[corocenfloor[k,1]-corodarkradius[k]:corocenfloor[k,1]+corodarkradius[k]+1,corocenfloor[k,0]-corodarkradius[k]:corocenfloor[k,0]+corodarkradius[k]+1]+=coro_obj_mask_corr
 
-    #Replace pixels with intensity>0.98 to 0.98 as that is minimum seen in spots in CV3
+    #Replace pixels with intensity>0.98 to 1.00 as even though centres of spots in CV3 had values of a few percent this was probably scattered
     w=np.where(pomintens>0.98)
-    pomintens[w]=0.98
+    pomintens[w]=1.00
 
     #Interpolate across bad pixels if at least 3 out of 4 corner neighbours are in POM mask
     pomintensfixbadpix=deepcopy(pomintens)
@@ -412,50 +432,91 @@ for l in range(numfilters):
 
     #Find total "flux" lost due to accounted POM features
     fractionfluxlost=np.sum(pomintensfixbadpix)/(2040.0*2040.0)
-    print ('total fraction of sensitivity decrease in accounted POM features=',fractionfluxlost)
+    print ('Total fraction of sensitivity decrease in accounted POM features=',fractionfluxlost)
 
     #Will output intensity files as transmission so do 1-intens
     pomtransmission=1.0-pomintensfixbadpix
 
-    outfile = 'jwst_niriss_cv3_pomtransmission_{}.fits'.format(filterdirlist[l])
-    outdirwithfilter=os.path.join(outdir, filterdirlist[l])
-    output_file = os.path.join(outdirwithfilter,outfile)
-    if not os.path.exists(outdirwithfilter):
-        os.makedirs(outdirwithfilter)
+    #Load F200W POM outline file derived in flatsplot.py
+    hdulistpomoutline=fits.open(pomoutlinefile)
+    pomoutlineheader=hdulistpomoutline[0].header
+    fullpomtransmission=hdulistpomoutline[1].data
+    pomoutlineoffsetx=pomoutlineheader['OFFSETX']
+    pomoutlineoffsety=pomoutlineheader['OFFSETY']
+    
+    # POM outline file is for F200W so apply filter-dependent shifts for all others
+    if filterdirlist[l]!='F200W':
+        xofffilter=2
+        yofffilter=-1
+        fullpomtransmission[0:yofffilter,xofffilter:]=fullpomtransmission[-1*yofffilter:,0:-1*xofffilter]
+        
+    fullpomtransmission[pomoutlineoffsety:(pomoutlineoffsety+2048),pomoutlineoffsetx:(pomoutlineoffsetx+2048)]=pomtransmission
+    fullpomtransmissionerr=fullpomtransmission/100.0
     
     filterwheel=measurepriheader['FILTER']                           
     pupilwheel=measurepriheader['PUPIL']                           
 
     #Add information about inputs to output POM transmission file header
-    hdup=fits.PrimaryHDU(data=None)
-    hdusci=fits.ImageHDU(data=pomtransmission,header=gr150csciheader,name='SCI')
-    hdup.header.append(('DATE',(datetime.isoformat(datetime.utcnow())),'Date this file was created (UTC)'),end=True)
-    hdup.header.append(('TELESCOP','JWST','Telescope used to acquire the data'),end=True)
-    hdup.header.append(('PEDIGREE','GROUND','The pedigree of the reference file'),end=True)
-    hdup.header.append(('DESCRIP','This is a POM transmission reference file.','Description of the reference file'),end=True)
-    hdup.header.append(('AUTHOR','Chris Willott','Author of the reference file'),end=True)
-    hdup.header.append(('', ''),end=True)
-    hdup.header.append(('', 'Instrument configuration information'),end=True)
-    hdup.header.append(('', ''),end=True)
-    hdup.header.append(('INSTRUME', 'NIRISS', 'Instrument used to acquire the data'),end=True)
-    hdup.header.append(('DETECTOR', 'NIS', 'Name of detector used to acquire the data'),end=True)
-    hdup.header.append(('FILTER', filterwheel, 'Name of filter element used'),end=True)
-    hdup.header.append(('PUPIL', pupilwheel, 'Name of the pupil element used'),end=True)
-    hdup.header.append(('SUBARRAY', 'FULL', 'Subarray used'),end=True)
-    hdup.header.append(('', ''),end=True)
-    hdup.header.append(('', 'POM Fitting Information'),end=True)
-    hdup.header.append(('', ''),end=True)
-    hdup.header.append(('DETPOM',os.path.basename(detectflatfile),'Direct flat for POM detection'),end=True)
-    hdup.header.append(('MEASPOM',os.path.basename(measureflatfile),'Direct flat for POM measurement'),end=True)
-    hdup.header.append(('CFLATPOM',os.path.basename(gr150cflatfile),'GR150C flat for POM'),end=True)
-    hdup.header.append(('RFLATPOM',os.path.basename(gr150rflatfile),'GR150R flat for POM'),end=True)
-    hdup.header.append(('BPMPOM',os.path.basename(maskfile),'Bad pixel mask for POM'),end=True)
-    hdup.header.append(('NGROWPOM',ngrow,'Number of pixels to grow POM features'),end=True)
-    hdulistout=fits.HDUList([hdup,hdusci])
+    #hdup=fits.PrimaryHDU(data=None)
+    #    hdusci=fits.ImageHDU(data=fullpomtransmission,header=gr150csciheader,name='SCI')
+    #    hdup.header.append(('DATE',(datetime.isoformat(datetime.utcnow())),'Date this file was created (UTC)'),end=True)
+    #    hdup.header.append(('TELESCOP','JWST','Telescope used to acquire the data'),end=True)
+    #    hdup.header.append(('PEDIGREE','GROUND','The pedigree of the reference file'),end=True)
+    #    hdup.header.append(('DESCRIP','This is a POM transmission reference file.','Description of the reference file'),end=True)
+    #    hdup.header.append(('AUTHOR','Chris Willott','Author of the reference file'),end=True)
+    #    hdup.header.append(('', ''),end=True)
+    #    hdup.header.append(('', 'Instrument configuration information'),end=True)
+    #    hdup.header.append(('', ''),end=True)
+    #    hdup.header.append(('INSTRUME', 'NIRISS', 'Instrument used to acquire the data'),end=True)
+    #    hdup.header.append(('DETECTOR', 'NIS', 'Name of detector used to acquire the data'),end=True)
+    #    hdup.header.append(('FILTER', filterwheel, 'Name of filter element used'),end=True)
+    #    hdup.header.append(('PUPIL', pupilwheel, 'Name of the pupil element used'),end=True)
+    #    hdup.header.append(('SUBARRAY', 'FULL', 'Subarray used'),end=True)
+    #    hdup.header.append(('', ''),end=True)
+    #    hdup.header.append(('', 'POM Fitting Information'),end=True)
+    #    hdup.header.append(('', ''),end=True)
+    #    hdup.header.append(('DETPOM',os.path.basename(detectflatfile),'Direct flat for POM detection'),end=True)
+    #    hdup.header.append(('MEASPOM',os.path.basename(measureflatfile),'Direct flat for POM measurement'),end=True)
+    #    hdup.header.append(('CFLATPOM',os.path.basename(gr150cflatfile),'GR150C flat for POM'),end=True)
+    #    hdup.header.append(('RFLATPOM',os.path.basename(gr150rflatfile),'GR150R flat for POM'),end=True)
+    #    hdup.header.append(('BPMPOM',os.path.basename(maskfile),'Bad pixel mask for POM'),end=True)
+    #    hdup.header.append(('NGROWPOM',ngrow,'Number of pixels to grow POM features'),end=True)
+    #    hdup.header.append(('OFFSETX',pomoutlineoffsetx,'transmision map-detector offset in x pixels'),end=True)
+    #    hdup.header.append(('OFFSETY',pomoutlineoffsety,'transmision map-detector offset in y pixels'),end=True)
+    #    hdulistout=fits.HDUList([hdup,hdusci])
 
+    #Define DQ_DEF binary table HDU
+    flagtable=np.rec.array([
+           ( 0,      0, 'GOOD',            'Good pixel')],
+           formats='int8,int8,a40,a80',
+           names='Bit,Value,Name,Description')
+    dqdef = flagtable
+
+    #Set up DQ array
+    dq=np.zeros(fullpomtransmission.shape,dtype=np.int8)
+
+    history = []
+    hdu = fits.PrimaryHDU()
+    all_files=[os.path.basename(measureflatfile),os.path.basename(detectflatfile),os.path.basename(gr150cflatfile),os.path.basename(gr150rflatfile),os.path.basename(maskfile)]
+
+    description='This is a pick-off mirror transmission reference file.'
+
+    #Output 2 GR150 grism files per filter and a GR700XD grism file for F150W in reference file format
+    grisms=['GR150C','GR150R','GR700XD']
+    for k in range(3):
+        if ((k<2) or (filterdirlist[l]=='F200W')):
+            outfile = 'jwst_niriss_cv3_pomtransmission_{}_{}.fits'.format(grisms[k],filterdirlist[l])
+            outdirwithfilter=os.path.join(outdir, filterdirlist[l])
+            output_file = os.path.join(outdirwithfilter,outfile)
+            if not os.path.exists(outdirwithfilter):
+                os.makedirs(outdirwithfilter)
+            hdu_list = fits.HDUList([hdu])
+            save_final_map(fullpomtransmission, dq, fullpomtransmissionerr, dqdef, instrument.upper(), detector.upper(), hdu_list, filterdir, grisms[k],
+                        all_files, author, description, pedigree, useafter, fpatemp, history, pomoutlineoffsetx, pomoutlineoffsety, ngrow, output_file)
+    
     #Output POM transmission file
-    print ('Writing',output_file)
-    hdulistout.writeto(output_file,overwrite=True)
+    #print ('Writing',output_file)
+    #hdulistout.writeto(output_file,overwrite=True)
 
     #End POM transmission file making
     
@@ -568,7 +629,9 @@ for l in range(numfilters):
     history = []
     hdu = fits.PrimaryHDU()
     all_files=[os.path.basename(measureflatfile),os.path.basename(detectflatfile),os.path.basename(detectgrismdirlist[0]),os.path.basename(detectgrismdirlist[1]),os.path.basename(patchgrismdirlist[0]),os.path.basename(patchgrismdirlist[1]),os.path.basename(maskfile)]
-        
+
+    description='This is a pixel flat reference file.'
+
     #Output 2 GR150 grism files per filter and a GR700XD grism file for F200W in reference file format
     grisms=['GR150C','GR150R','GR700XD']
     for k in range(3):
@@ -580,5 +643,5 @@ for l in range(numfilters):
                 os.makedirs(outdirwithfilter)
             hdu_list = fits.HDUList([hdu])
             save_final_map(measuredata, dq, measureerr, dqdef, instrument.upper(), detector.upper(), hdu_list, filterdir, grisms[k],
-                               all_files, author, description, pedigree, useafter, fpatemp, history, output_file)
+                               all_files, author, description, pedigree, useafter, fpatemp, history, pomoutlineoffsetx, pomoutlineoffsety, ngrow, output_file)
 
