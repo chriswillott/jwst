@@ -13,7 +13,7 @@ columnjump.nsigma2jumps = 3.00        \# sigma rejection threshold for two jumps
 columnjump.outputdiagnostics = True    \#  output a table of the columns corrected?  
 columnjump.output_dir = out_dir  
 columnjump.output_file = out_file  
-\# Run the pipeline  
+\# Run the step  
 result = columnjump(inputfile)
 
 
