@@ -9,7 +9,7 @@
 columnjump is available at pypi:  
 pip install columnjump
 
-<b>Usage</b> 
+<b>Usage</b>  
 A typical calling sequence is:  
 from columnjump import  ColumnJumpStep  
 columnjump = ColumnJumpStep()  
