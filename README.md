@@ -1,6 +1,7 @@
 # jwst
-##Tools for processing and analyzing JWST data
-
+## Tools for processing and analyzing JWST data
+### Additional modules for pipeline processing
+ 
 <b>columnjump</b> is an additional step that can be applied as part of the JWST DETECTOR1 pipeline for data from the NIRISS instrument. The step should be called after dark current subraction and before jump detection. The columnjump step removes random jumps in the levels of some columns (~50 columns per Ng=100 NIRSRAPID ramp) that cause increased noise along those columns. Note the term columns here refers to the original detector coordinates and these are actually rows in the DMD orientation, i.e. they are orthogonal and distinct from the well-known 1/f noise.
 
 A typical calling sequence is:
@@ -15,7 +16,8 @@ columnjump.output_file = out_file
 \# Run the pipeline  
 result = columnjump(inputfile)
 
-##Scripts for analyzing dark exposures 
+
+### Scripts for analyzing dark exposures 
 
 <b>makebpm.py</b> generates three bad pixel mask files for the NIRISS detector. 
 The three masks have different dark noise thresholds appropriate to various types of calibration or science data.
