@@ -14,13 +14,13 @@ A typical calling sequence is:
 ```python
 from columnjump import  ColumnJumpStep  
 columnjump = ColumnJumpStep()  
-\# Manually set any desired non-default parameter values  
+#Manually set any desired non-default parameter values  
 columnjump.nsigma1jump  = 5.00        \# sigma rejection threshold for one jump in the ramp  
 columnjump.nsigma2jumps = 3.00        \# sigma rejection threshold for two jumps in the ramp  
 columnjump.outputdiagnostics = True    \#  output a table of the columns corrected?  
 columnjump.output_dir = out_dir  
 columnjump.output_file = out_file  
-\# Run the step  
+#Run the step  
 result = columnjump(inputfile)
 ```
 
