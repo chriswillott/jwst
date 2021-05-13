@@ -11,6 +11,7 @@ pip install columnjump
 
 <b>Usage</b>  
 A typical calling sequence is:  
+```python
 from columnjump import  ColumnJumpStep  
 columnjump = ColumnJumpStep()  
 \# Manually set any desired non-default parameter values  
@@ -21,6 +22,7 @@ columnjump.output_dir = out_dir
 columnjump.output_file = out_file  
 \# Run the step  
 result = columnjump(inputfile)
+```
 
 
 ## Scripts for analyzing dark exposures 
