@@ -3,7 +3,7 @@
 ## Additional modules for pipeline processing
  
 ### Columnjump
-<b>columnjump</b> is an additional step that can be applied as part of the JWST DETECTOR1 pipeline for data from the NIRISS instrument. The step should be called after dark current subraction and before jump detection. The columnjump step removes random jumps in the levels of some columns (~50 columns per Ng=100 NIRSRAPID ramp) that cause increased noise along those columns. Note the term columns here refers to the original detector coordinates and these are actually rows in the DMS orientation, i.e. they are orthogonal and distinct from the well-known 1/f noise.
+<b>columnjump</b> is an additional step that can be applied as part of the JWST DETECTOR1 pipeline for data from the NIRISS instrument. The step should be called after dark current subtraction and before jump detection. The columnjump step removes random jumps in the levels of some columns (~50 columns per Ng=100 NIRSRAPID ramp) that cause increased noise along those columns. Note the term columns here refers to the original detector coordinates and these are actually rows in the DMS orientation, i.e. they are orthogonal and distinct from the well-known stripes of 1/f noise.
 
 <b>Installation</b>  
 columnjump is available at pypi: 
