@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="columnjump-chriswillott", # Replace with your own username
+    name="columnjump", # Replace with your own username
     version="1.0.0",
     author="Chris Willott",
     author_email="chriswillott1@gmail.com",
