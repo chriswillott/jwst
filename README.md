@@ -24,6 +24,25 @@ columnjump.output_file = out_file
 #Run the step  
 result = columnjump(inputfile)
 ```
+### image1overf.py
+<b>image1overf.py</b> performs a correction for 1/f readout noise on NIRISS or NIRCam imaging data. The operation is performed on the calibrated level 2 image. It includes correcting for the effect of a variable background and masking pixels containing sources. Only two subarrays are supported: FULL and SUB256. Use with care and inspect the results for any unintended consequences.
+<b>Usage</b>  
+A typical calling sequence is:  
+```python
+cal21overffile = cal2file.replace('_cal.fits','_cal_1overf.fits')
+print ('Running 1/f correction on {} to produce {}'.format(cal2file,cal21overffile))
+with fits.open(cal2file) as cal2hdulist:
+    if cal2hdulist['PRIMARY'].header['SUBARRAY']=='FULL' or cal2hdulist['PRIMARY'].header['SUBARRAY']=='SUB256':
+        sigma_bgmask=3.0
+        sigma_1fmask=2.0
+        splitamps=False   #Set to True only in a sparse field so each amplifier will be fit separately. 
+        correcteddata = sub1fimaging(cal2hdulist,sigma_bgmask,sigma_1fmask,splitamps)
+        if cal2hdulist['PRIMARY'].header['SUBARRAY']=='FULL':
+            cal2hdulist['SCI'].data[4:2044,4:2044] = correcteddata  
+        elif cal2hdulist['PRIMARY'].header['SUBARRAY']=='SUB256':
+            cal2hdulist['SCI'].data[:252,:252] = correcteddata
+        cal2hdulist.writeto(cal21overffile, overwrite=True)
+```
 
 
 ## Scripts for analyzing dark exposures 
