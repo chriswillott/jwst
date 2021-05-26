@@ -28,7 +28,7 @@ result = columnjump(inputfile)
 <b>image1overf.py</b> performs a correction for 1/f readout noise on NIRISS or NIRCam imaging data. The operation is performed on the calibrated level 2 image. It includes correcting for the effect of a variable background and masking pixels containing sources. Only two subarrays are supported: FULL and SUB256. Use with care and inspect the results for any unintended consequences.
 
 <b>Usage</b>  
-A typical calling sequence is:  
+A typical calling sequence on a single level2 image named cal2file is:  
 ```python
 from image1overf import sub1fimaging
 cal21overffile = cal2file.replace('_cal.fits','_cal_1overf.fits')
