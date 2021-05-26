@@ -29,6 +29,7 @@ result = columnjump(inputfile)
 <b>Usage</b>  
 A typical calling sequence is:  
 ```python
+from image1overf import sub1fimaging
 cal21overffile = cal2file.replace('_cal.fits','_cal_1overf.fits')
 print ('Running 1/f correction on {} to produce {}'.format(cal2file,cal21overffile))
 with fits.open(cal2file) as cal2hdulist:
