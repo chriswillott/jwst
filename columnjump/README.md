@@ -5,3 +5,5 @@ original detector coordinates (not DMS coordinates) so appear in 3rd
 axis of 4D data array. Uses modified version of algorithm documented in CSA-JWST-TN-0003.
 
 It is intended this module be run during the DETECTOR1 pipeline between the dark current subtraction and jump detection step.
+
+Version 1.1.0 removes a dependency on the jwst pipeline version 

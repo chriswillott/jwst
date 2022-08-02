@@ -18,8 +18,9 @@ import time
 
 from jwst import datamodels
 from jwst.datamodels import dqflags
-from jwst.ramp_fitting.ramp_fit import calc_slope
-from jwst.ramp_fitting.utils import OptRes
+
+from .jwstpipe1p1p0_ramp_fit import calc_slope
+from .jwstpipe1p1p0_utils import OptRes
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

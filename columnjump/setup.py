@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="columnjump", # Replace with your own username
-    version="1.0.0",
+    version="1.1.0",
     author="Chris Willott",
     author_email="chriswillott1@gmail.com",
     description="Fix column jumps for JWST NIRISS detector",

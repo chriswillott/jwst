@@ -4,7 +4,6 @@
 #Uses noise and bad pixel files output by makebpm.py
 #Outputs 5x5 images for each amp in the void and outside and a 5x5x2048x2048 array of IPC across the full detector
 
-from __future__ import print_function
 import numpy as np
 import re
 import os

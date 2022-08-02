@@ -21,7 +21,7 @@
 
 import numpy as np
 from scipy import ndimage
-import optparse
+import optparse, sys
 import os
 import astropy.io.fits as fits
 from astropy.stats import SigmaClip,sigma_clip,sigma_clipped_stats
@@ -43,7 +43,7 @@ op.add_option("--ngrow")
 
 o, a = op.parse_args()
 if a:
-    print (sys.syserr, "unrecognized option: ",a)
+    print (sys.stderr, "unrecognized option: ",a)
     sys.exit(-1)
 
 indirimage=o.indirimage

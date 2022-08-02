@@ -13,7 +13,7 @@
 #makenirissimagingflats.py --indir='./slope' --outdir='./imageflatreffiles'
 
 import numpy as np
-import optparse
+import optparse, sys
 import os
 import astropy.io.fits as fits
 from astropy.stats import SigmaClip,sigma_clip,sigma_clipped_stats
@@ -30,7 +30,7 @@ op.add_option("--outdir")
 
 o, a = op.parse_args()
 if a:
-    print (sys.syserr, "unrecognized option: ",a)
+    print (sys.stderr, "unrecognized option: ",a)
     sys.exit(-1)
 
 indir=o.indir

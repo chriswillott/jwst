@@ -39,7 +39,7 @@ def sub1fimaging(cal2hdulist,sigma_bgmask,sigma_1fmask,splitamps):
     slowaxis = abs(cal2hdulist['PRIMARY'].header['SLOWAXIS'])
 
     #Get a mask of bad pixels from the DQ array
-    mask = np.zeros(data.shape)
+    mask = np.zeros(data.shape,dtype=bool)
     i_yy,i_xx = np.where((np.bitwise_and(dq, dqflags.group['DO_NOT_USE']) == 1))
     mask[i_yy,i_xx] = 1
 
@@ -61,7 +61,7 @@ def sub1fimaging(cal2hdulist,sigma_bgmask,sigma_1fmask,splitamps):
     bksubdata = data-bkg.background
 
     #Remake mask on background-subtracted data, using same method as before but now clipping at < or > 2 sigma of the flux distribution 
-    mask = np.zeros(data.shape)
+    mask = np.zeros(data.shape,dtype=bool)
     mask[i_yy,i_xx] = 1
     gooddata = bksubdata[np.where(mask==0)]
     median = np.median(gooddata)
@@ -72,7 +72,6 @@ def sub1fimaging(cal2hdulist,sigma_bgmask,sigma_1fmask,splitamps):
 
     #Make masked array of background-subtracted data and then take median along columns (slowaxis=1) or rows (slowaxis=2)
     #if splitamps is True and full frame then define sections of 4 amps and fit and subtract each separately
-    splitamps=True
     if splitamps==True and cal2hdulist['PRIMARY'].header['SUBARRAY']=='FULL':
         stripes=np.zeros(data.shape)
         #define sections - sub off 4 because reference pixels already removed
