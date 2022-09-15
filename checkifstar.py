@@ -4,15 +4,13 @@ import numpy as np
 import os
 from astropy.io import fits
 from jwst.datamodels import dqflags
-import photutils
 from photutils import CircularAnnulus
-from datetime import datetime
 import webbpsf
 from copy import deepcopy
 
 def checkif(cutout,cutoutdq,webbpsfcutoutmask,radmin,radmax,spikeratio):
     """
-    Given a NIRISS 2D image cutout check for diffraction spikes and return True or False for it being a star (or return a probability?)
+    Given a NIRISS or NIRCam 2D image cutout check for diffraction spikes and return True or False for it being a star (or return a probability?)
     Parameters:
     cutout - 2D image cutout
     cutoutdq - 2D image cutout dq array
@@ -34,7 +32,8 @@ def checkif(cutout,cutoutdq,webbpsfcutoutmask,radmin,radmax,spikeratio):
     saturatedindices = np.where(np.bitwise_and(cutoutdq, dqflags.pixel['SATURATED']))
     nonsatmask[saturatedindices] = 0
     cutoutnonsat = cutout[np.where(nonsatmask>0)]
-    #Only continue if cutout is same shape as webbpsf mask 
+
+    #Only continue if cutout is same shape as webbpsf mask. Otherwise assume not a star 
     if cutout.shape==webbpsfcutoutmaskhere.shape: 
         fifthpercentile = np.percentile(cutoutnonsat,5)
         cutout -= fifthpercentile
@@ -50,7 +49,7 @@ def checkif(cutout,cutoutdq,webbpsfcutoutmask,radmin,radmax,spikeratio):
         numrad = radmax-radmin+1
         radii = np.arange(numrad)+radmin
         yesspike=0
-        
+        #for k in range(1):
         for k in range(numrad):
             annulus_aperture = CircularAnnulus([psfcenxy,psfcenxy], r_in=radii[k]-0.5, r_out=radii[k]+0.5)
 
@@ -59,25 +58,26 @@ def checkif(cutout,cutoutdq,webbpsfcutoutmask,radmin,radmax,spikeratio):
             annulus_measuredata = annulus_mask.multiply(cutout*maskspikes)
             annulus_maskdata = annulus_mask.data
             annulus_measuredata_1d = annulus_measuredata[annulus_maskdata > 0]
-            spikes_mean = np.mean(annulus_measuredata_1d)
+            spikes_mean = np.nanmean(annulus_measuredata_1d)
 
             #Then out of spikes
             annulus_mask = annulus_aperture.to_mask(method='center')
             annulus_measuredata = annulus_mask.multiply(cutout*masknotspikes)
             annulus_maskdata = annulus_mask.data
             annulus_measuredata_1d = annulus_measuredata[annulus_maskdata > 0]
-            notspikes_mean = np.mean(annulus_measuredata_1d)
+            notspikes_mean = np.nanmean(annulus_measuredata_1d)
 
             #Keep count of annuli where spikes are brighter
             if spikes_mean/notspikes_mean > spikeratio:
                 yesspike+=1
 
+        #Find fraction of annuli where spikes are brighter        
         fracyesspike = yesspike/numrad
         if fracyesspike >= 0.5:
             isstar = True
         else:    
             isstar = False
-        print (fracyesspike,isstar)
+        #print (fracyesspike,isstar)
     else:
         isstar = False
     return isstar
@@ -85,8 +85,7 @@ def checkif(cutout,cutoutdq,webbpsfcutoutmask,radmin,radmax,spikeratio):
 
 def makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax):
     """
-    make  WebbPSF cutout mask for this filter with values of 1 in spikes and 2 off spikes (0 elsewhere)
-    Requires WEBBPSF_PATH environment variable to have been set.
+    make a WebbPSF cutout mask for this filter with values of 1 in diffraction spikes and 2 off spikes (0 elsewhere)
     Parameters:
     ins - instrument NIRISS or NIRCAM
     filtername - filter name as understood by webbpsf
@@ -96,8 +95,10 @@ def makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax):
     webbpsfcutoutmask - same size and centered cutout from WebbPSF for this filter as a mask with values of 2 in spikes and 1 off spikes (0 elsewhere)
     """
 
-    outfile='temppsfmask.fits'
-    psffile="./WebbPSF_{}_{}_{}_{}.fits".format(ins,filtername,str(pixscale).replace('.','p'),cutsize)
+    outfile='./temppsfmask_{}_{}_{}_{}.fits'.format(ins,filtername,str(pixscale).replace('.','p'),cutsize)
+    psffile='./WebbPSF_{}_{}_{}_{}.fits'.format(ins,filtername,str(pixscale).replace('.','p'),cutsize)
+    print (outfile,psffile)
+    #If WebbPSF file already exists, do not generate it again
     if not os.path.exists(psffile):
         if ins.lower()=='niriss':
             nisornic = webbpsf.NIRISS()
@@ -112,7 +113,6 @@ def makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax):
     psf=psfhdulist[0].data
     psf /= psf.sum()
 
-    #For NIRISS F090W to F200W start at 9 pixels radius and go out to 16 pixels radius
     webbpsfcutoutmask = np.zeros((cutsize,cutsize))
     psfcenxy = (cutsize-1)/2
     numrad = radmax-radmin+1
@@ -125,13 +125,14 @@ def makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax):
         xhi = xlo+masksize
         ylo=xlo
         yhi=xhi
-
+        
         annulus_measuredata = annulus_mask.multiply(psf)
         annulus_maskdata = annulus_mask.data
 
         annulus_measuredata_1d = annulus_measuredata[annulus_maskdata > 0]
         annulus_measuredata_median=np.median(annulus_measuredata_1d)
         annulus_measuredata_std=np.std(annulus_measuredata_1d)
+        #Set half the pixels in the annulus to value 1 and half to value 2 
         thresh = annulus_measuredata_median+0.0*annulus_measuredata_std
         annulus_maskdata[np.where(annulus_measuredata>thresh)] = 2
         webbpsfcutoutmask[ylo:yhi,xlo:xhi] = webbpsfcutoutmask[ylo:yhi,xlo:xhi] + annulus_maskdata
@@ -144,6 +145,11 @@ def makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax):
 direct=False
 if direct:
     ins='niriss'
+    #filtername='F150W'        
+    #pixscale=0.033
+    #cutsize=276
+    #radmin = 18
+    #radmax = 32
     filtername='F115W'        
     pixscale=0.0656
     cutsize=37
@@ -151,11 +157,12 @@ if direct:
     radmax = 16
     spikeratio = 1.4
 
+
     #Make the WebbPSF mask
     webbpsfcutoutmask = makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax)
-   
+
     #Feed the cutouts and see if matches a star
-    ratefile='jw01324001001_02101_00001_nis_rate.fits'
+    ratefile='./jw01324001001_02101_00001_nis_columnjumpstep_rate.fits'
     with fits.open(ratefile) as hdulist:
         cutout = hdulist['SCI'].data[1283:1320,1310:1347]
         cutoutdq = hdulist['DQ'].data[1283:1320,1310:1347]
