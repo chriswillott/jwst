@@ -47,13 +47,27 @@ with fits.open(cal2file) as cal2hdulist:
 ```
 
 ### dosnowballflags.py
-<b>dosnowballflags.py</b> flags pixels in snowballs in NIRISS ramps. It expands the saturated central ring and diffuse halo jump ring. 
+<b>dosnowballflags.py</b>  flags pixels in snowballs - expand saturated ring and diffuse halo jump ring.
     The GROUPDQ array will be flagged with the SATURATED and JUMP_DET flags.
     Saturating snowballs early in short ramps can have unflagged central pixels that jump in the previous group.
     This is called after the regular jump step.
     The output file is overwritten.
-    Code assumes only one integration per exposure for this dataset.
+    You need a working installation of WebbPSF.
+    Works for NIRISS and NIRCam.
     Requires checkifstar.py for differentiating between saturated stars and snowballs.
+  
+<b>Usage</b>  
+A typical calling sequence is:  
+```python
+from dosnowballflags import snowballflags
+jumpdirfile = './jw01345001001_02201_00001_nrca1_jump.fits'
+filtername = 'F115W'
+npixfind = 40
+satpixradius = 3
+halofactorradius = 2.0
+imagingmode = True
+snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,imagingmode)
+```
   
 ### checkifstar.py
 <b>checkifstar.py</b> builds a WebbPSF model and then compares an image cutout with the model to determine if that cutout corresponds to a star or not. This use the diffraction spikes and PSF asymmetry. Currently works for NIRISS and NIRCam. Will fail on extremely saturated stars, but good on moderately saturated ones.
