@@ -6,7 +6,6 @@ from astropy.io import fits
 from jwst.datamodels import dqflags
 from photutils.segmentation import detect_sources
 from photutils.segmentation import SourceCatalog
-from checkifstar import checkif, makewebbpsfmask
 from copy import deepcopy 
 from skimage.draw import disk
 
@@ -19,6 +18,7 @@ def snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,
     This is called after the regular jump step.
     The output file is overwritten.
     You need a working installation of WebbPSF.
+    Requires checkifstar.py if imagingmode is True
 
     Parameters:
     jumpdirfile - path to the input file, which has jump step applied 
@@ -69,6 +69,7 @@ def snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,
                 
         #Make the WebbPSF mask (will not repeat the actual WebbPSF call if the file already exists)
         if imagingmode == True:
+            from checkifstar import checkif, makewebbpsfmask
             print ('Running makewebbpsfmask',ins,filtername,pixscale,cutsize,radmin,radmax)
             webbpsfcutoutmask = makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax)    
 
