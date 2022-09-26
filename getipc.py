@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 #This procedure determines a 5x5 IPC kernel image based on spread of charge from hot pixels
 #Includes the NIRISS void map to calculate a different IPC kernel within the void region 
-#Uses noise and bad pixel files output by makebpm.py
+#Uses noise and bad pixel files output by makebpmreadnoise.py
 #Outputs 5x5 images for each amp in the void and outside and a 5x5x2048x2048 array of IPC across the full detector
+#Also outputs a normalized 3x3x2048x2048 array of IPC across the full detector as that is what is required for the JWST pipeline 
 
 import numpy as np
 import re
@@ -28,35 +29,36 @@ makesymm=True
 gain=1.62
 
 #define reference file locations
-refdir='/Users/willottc/niriss/detectors/willott_reference_files/'
-longbpmfile=refdir+'jwst_niriss_cv3_38k_bpm_long.fits'
-shortbpmfile=refdir+'jwst_niriss_cv3_38k_bpm_short.fits'
-typebpmdir=refdir+'badpixeltypes/'
-typebpmfile=typebpmdir+'jwst_niriss_cv3_38k_bpm_type'
+refdir='/home/user/reffiles'
+darkrefdir='/home/user/darkresults'
+longbpmfile=darkrefdir+'jwst_niriss_com_bpm_long.fits'
+shortbpmfile=darkrefdir+'jwst_niriss_com_bpm_short.fits'
+typebpmdir=darkrefdir+'badpixeltypes/'
+typebpmfile=typebpmdir+'jwst_niriss_com_bpm_type'
 hotfile=typebpmfile+'_hot.fits'
 badflatfile=typebpmfile+'_unrelflat.fits'
 donotuselongfile=typebpmfile+'_donotuse_long.fits'
 refpixfile=typebpmfile+'_refpixel.fits'
-voidmaskfile=refdir+'volk_niriss_voidmask9.fits'
-ipcfile=refdir+'jwst_niriss_cv3_38k_measured_ipc.fits'
+voidmaskfile=refdir+'volk_voidmask10.fits'
+ipcfile=refdir+'jwst_niriss_com_ipc.fits'
 
 ipc4d=np.zeros((5,5,2048,2048))
 
 
 #location of dark noise files
-darknoisedir='/Users/willottc/niriss/detectors/cv3/colddarks/noise/'
+darknoisedir='/home/user/darkresults/noise/'
 
 #Load dark noise data and multiply by gain to get in e-
-slopenoisefile=darknoisedir+'cv3_38k_sigmadarkzero.fits'
+slopenoisefile=darknoisedir+'gdqsigmadarkzero.fits'
 hdulist=fits.open(slopenoisefile)
 header=hdulist[0].header
 slopenoise=hdulist[0].data*gain
 
-darkcurrfile=darknoisedir+'cv3_38k_mediandark.fits'
+darkcurrfile=darknoisedir+'gdqmediandark.fits'
 hdulist=fits.open(darkcurrfile)
 darkcurr=hdulist[0].data*gain
 
-cdsnoisefile=darknoisedir+'cv3_38k_mediancds1fstd.fits'
+cdsnoisefile=darknoisedir+'gdqmediancds1fstd.fits'
 hdulist=fits.open(cdsnoisefile)
 cdsnoise=hdulist[0].data*gain
 
@@ -169,8 +171,9 @@ for j in range(5):
     clippedfiveby3dmedian=np.ma.median(clippedfiveby3d,axis=2)
     #print ('clippedfiveby3dmedian',clippedfiveby3dmedian)
     header['NAXIS'] = 2
-
-    border=np.concatenate((np.ravel(clippedfiveby3dmedian[0,:]),np.ravel(clippedfiveby3dmedian[-1,:]),np.ravel(clippedfiveby3dmedian[1:6,0]),np.ravel(clippedfiveby3dmedian[1:6,-1])))
+    
+    border=np.concatenate((np.ravel(clippedfiveby3dmedian[0,:]),np.ravel(clippedfiveby3dmedian[-1,:]),
+                             np.ravel(clippedfiveby3dmedian[1:6,0]),np.ravel(clippedfiveby3dmedian[1:6,-1])))
     normclippedfiveby3dmedian=clippedfiveby3dmedian.data-np.mean(border)
     normclippedfiveby3dmedian=normclippedfiveby3dmedian/np.sum(normclippedfiveby3dmedian)
     print (fiveby3d.shape,np.mean(border))
@@ -218,7 +221,7 @@ for j in range(5):
         w=np.where(mask5==1)
         normclippedfiveby3dmedian[w]=np.mean(normclippedfiveby3dmedian[w])
     
-    filemedian='ipc5by5median_amp%s_notvoid.fits' %  (amplifier[j])
+    filemedian=os.path.join(refdir,'ipc5by5median_amp%s_notvoid.fits' %  (amplifier[j]))
     fits.writeto(filemedian,normclippedfiveby3dmedian,header,overwrite=True)
 
     print (normclippedfiveby3dmedian[2,1])
@@ -260,7 +263,8 @@ for j in range(5):
         #print ('clippedfiveby3dmedian',clippedfiveby3dmedian)
         header['NAXIS'] = 2
 
-        border=np.concatenate((np.ravel(clippedfiveby3dmedian[0,:]),np.ravel(clippedfiveby3dmedian[-1,:]),np.ravel(clippedfiveby3dmedian[1:6,0]),np.ravel(clippedfiveby3dmedian[1:6,-1])))
+        border=np.concatenate((np.ravel(clippedfiveby3dmedian[0,:]),np.ravel(clippedfiveby3dmedian[-1,:]),
+                               np.ravel(clippedfiveby3dmedian[1:6,0]),np.ravel(clippedfiveby3dmedian[1:6,-1])))
         normclippedfiveby3dmedian=clippedfiveby3dmedian.data-np.mean(border)
         normclippedfiveby3dmedian=normclippedfiveby3dmedian/np.sum(normclippedfiveby3dmedian)
         
@@ -309,7 +313,7 @@ for j in range(5):
 
         normclippedfiveby3dmedianinvoid=deepcopy(normclippedfiveby3dmedian)
 
-        filemedian='ipc5by5median_amp%s_invoid.fits' %  (amplifier[j])
+        filemedian=os.path.join(refdir,'ipc5by5median_amp%s_invoid.fits' %  (amplifier[j]))
         fits.writeto(filemedian,normclippedfiveby3dmedian,header,overwrite=True)
 
         print (normclippedfiveby3dmedian[2,1])
@@ -323,7 +327,7 @@ for j in range(5):
         
     if j==3:
         normclippedfiveby3dmedianinvoid=np.flip(normclippedfiveby3dmedianinvoid,axis=0)
-        filemedian='ipc5by5median_amp%s_invoid_symm.fits' %  (amplifier[j])
+        filemedian=os.path.join(refdir,'ipc5by5median_amp%s_invoid_symm.fits' %  (amplifier[j]))
         fits.writeto(filemedian,normclippedfiveby3dmedianinvoid,header,overwrite=True)
         #expand shape of array
         normclippedfiveby3dmedianinvoidexpand=np.expand_dims(normclippedfiveby3dmedianinvoid,axis=2)
@@ -344,7 +348,53 @@ print (refpixflagged[w].size)
 ipc4d[:,:,w[0],w[1]]=0
 ipc4d[2,2,w[0],w[1]]=1
      
-#output 4D IPC convolution reference file
+#output 4D IPC convolution reference file with 5x5 
 header['NAXIS'] = 4
 fits.writeto(ipcfile,ipc4d,header,overwrite=True)
+
+
+#make a 4D IPC convolution reference file with 3x3 for the official reference file - will need to renormalize
+ipc4d_3by3=ipc4d[1:4,1:4,:,:]
+print (ipc4d_3by3.shape)
+
+#Do per amplifier 
+amplifier=np.array(['4','3','2','1'])
+colstart=np.array([4,512,1024,1536])
+colstop=np.array([512,1024,1536,2044])
+for j in range(4):
+
+    ampmask=np.zeros((2048,2048),'uint16')
+    ampmask[j*512:(1+j)*512,:]=1
+
+    #first do void region (only if not amp 4)
+    if j>0:
+        w=np.where((voidmask==1)&(ampmask==1)&(refpixflagged==0))
+        print (voidmask[w].size,w[0][0],w[1][0])
+        scale = np.sum(ipc4d_3by3[:,:,w[0][0],w[1][0]])
+        print (j, scale)
+        print (w[0][0],w[1][0])
+        print (ipc4d_3by3[:,:,w[0][0],w[1][0]])
+        ipc4d_3by3[:,:,w[0],w[1]] = ipc4d_3by3[:,:,w[0],w[1]] / scale
+        print (np.sum(ipc4d_3by3[:,:,w[0][0],w[1][0]]))
+
+    #then do out of void region
+    w=np.where((voidmask==0)&(ampmask==1)&(refpixflagged==0))
+    print (voidmask[w].size,w[0][0],w[1][0])
+    scale = np.sum(ipc4d_3by3[:,:,w[0][0],w[1][0]])
+    print (j, scale)
+    print (w[0][0],w[1][0])
+    print (ipc4d_3by3[:,:,w[0][0],w[1][0]])
+    ipc4d_3by3[:,:,w[0],w[1]] = ipc4d_3by3[:,:,w[0],w[1]] / scale
+    print (np.sum(ipc4d_3by3[:,:,w[0][0],w[1][0]]))
+
+#set all reference pixels to 1 in centre and zero elsewhere
+w=np.where(refpixflagged==1)
+print (refpixflagged[w].size)
+ipc4d_3by3[:,:,w[0],w[1]]=0
+ipc4d_3by3[1,1,w[0],w[1]]=1
+     
+#output 4D IPC convolution reference file with 3x3 
+header['NAXIS'] = 4
+ipcfile_3by3 = ipcfile.replace('.fits','_3x3.fits')
+fits.writeto(ipcfile_3by3,ipc4d_3by3,header,overwrite=True)
 

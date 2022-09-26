@@ -59,10 +59,18 @@ def snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,
                 radmin = 9
                 radmax = 16
                 spikeratio = 1.4
+        elif ins=='nirspec':
+            #Note these parameters only used for imaging mode so dummy values for NIRSpec
+            pixscale = 0.10
+            cutsize = 25
+            radmin = 6
+            radmax = 12
+            spikeratio = 1.4
                 
         #Make the WebbPSF mask (will not repeat the actual WebbPSF call if the file already exists)
-        print ('Running makewebbpsfmask',ins,filtername,pixscale,cutsize,radmin,radmax)
-        webbpsfcutoutmask = makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax)    
+        if imagingmode == True:
+            print ('Running makewebbpsfmask',ins,filtername,pixscale,cutsize,radmin,radmax)
+            webbpsfcutoutmask = makewebbpsfmask(ins,filtername,pixscale,cutsize,radmin,radmax)    
 
         #iterate over integrations
         for h in range(nint):
@@ -108,19 +116,19 @@ def snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,
                             #print (j,k+1,segmtbl['xcentroid'][k],segmtbl['ycentroid'][k],'eccen=',segmtbl['eccentricity'][k],segmtbl['bbox_ymin'][k],segmtbl['bbox_ymax'][k],segmtbl['bbox_xmin'][k],segmtbl['bbox_xmax'][k],segboxaxisratio)
                             #Check if a star by running the checkifstar.py code on the relevant group of the jump cube sci array masking out bad pixels inc jump and saturated pixels
                             #First cutout should be same size as WebbPSF PSF
-                            xlo = int(segmtbl['xcentroid'][k]-(cutsize-1)/2)
-                            xhi = xlo+cutsize
-                            ylo = int(segmtbl['ycentroid'][k]-(cutsize-1)/2)
-                            yhi = ylo+cutsize    
-
-                            scicutout   = deepcopy(scithisgroup[ylo:yhi,xlo:xhi])
-                            pdqcutout   = deepcopy(pdq[ylo:yhi,xlo:xhi])
-                            jumpscutout = jumps[ylo:yhi,xlo:xhi]
-                            satcutout   = sat[ylo:yhi,xlo:xhi]
-                            pdqcutout[np.where(jumpscutout>0)] = 1
-                            pdqcutout[np.where(satcutout>0)] = 1
-                            #Check if this is a saturated star rather than a snowball
                             if imagingmode == True:
+                                xlo = int(segmtbl['xcentroid'][k]-(cutsize-1)/2)
+                                xhi = xlo+cutsize
+                                ylo = int(segmtbl['ycentroid'][k]-(cutsize-1)/2)
+                                yhi = ylo+cutsize    
+
+                                scicutout   = deepcopy(scithisgroup[ylo:yhi,xlo:xhi])
+                                pdqcutout   = deepcopy(pdq[ylo:yhi,xlo:xhi])
+                                jumpscutout = jumps[ylo:yhi,xlo:xhi]
+                                satcutout   = sat[ylo:yhi,xlo:xhi]
+                                pdqcutout[np.where(jumpscutout>0)] = 1
+                                pdqcutout[np.where(satcutout>0)] = 1
+                                #Run the check to see if this is a saturated star rather than a snowball
                                 isstar = checkif(scicutout,pdqcutout,webbpsfcutoutmask,radmin,radmax,spikeratio)
                             else:
                                 isstar = False
@@ -216,7 +224,6 @@ def snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,
         #snowfile = jumpdirfile.replace('.fits','_snow.fits')
         snowfile = jumpdirfile
         hdulist.writeto(snowfile,overwrite=True)  
-
 
 #Run directly for testing
 direct=False
