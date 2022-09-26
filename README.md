@@ -54,7 +54,7 @@ with fits.open(cal2file) as cal2hdulist:
     The output file is overwritten.
     You need a working installation of WebbPSF.
     Works for NIRISS, NIRCam and NIRSpec.
-    Requires checkifstar.py for differentiating between saturated stars and snowballs.
+    Requires checkifstar.py for differentiating between saturated stars and snowballs if imagingmode is True.
   
 <b>Usage</b>  
 A typical calling sequence is:  
