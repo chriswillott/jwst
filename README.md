@@ -74,9 +74,10 @@ snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,imag
 
 ### dopersistflags.py
 <b>dopersistflags.py</b> flags pixels that reached a very high number of counts in the previous integration.
-    The GROUPDQ array will be flagged with the JUMP_DET flag (this is called after the jump step and snowball flagging so won't interfere with that)
-    Only groups within timeconstant after end of previous integration are flagged
-    The input file is overwritten
+    The GROUPDQ array will be flagged with the JUMP_DET flag (this is called after the jump step and snowball flagging so won't interfere with that).
+    Only groups within timeconstant after end of previous integration are flagged.
+    The input file is overwritten.
+    
 <b>Usage</b>  
 A typical calling sequence is:  
 ```python
