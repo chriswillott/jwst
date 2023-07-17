@@ -25,7 +25,7 @@ columnjump.output_file = out_file
 result = columnjump(inputfile)
 ```
 ### image1overf.py
-<b>image1overf.py</b> performs a correction for 1/f readout noise on NIRISS or NIRCam imaging data. The operation is performed on the calibrated level 2 image. It includes correcting for the effect of a variable background and masking pixels containing sources. Only two subarrays are supported: FULL and SUB256. Use with care and inspect the results for any unintended consequences.
+<b>image1overf.py</b> performs a correction for 1/f readout noise on NIRISS or NIRCam imaging data. The operation is performed on the calibrated level 2 image. It includes the effect of a variable background (by temporarily removing it before determining the 1/f correction and adding it back afterwards) and masking pixels containing sources. Only two subarrays are supported: FULL and SUB256. Use with care and inspect the results for any unintended consequences.
 
 <b>Usage</b>  
 A typical calling sequence on a single level2 image named cal2file is:  
@@ -35,10 +35,11 @@ cal21overffile = cal2file.replace('_cal.fits','_cal_1overf.fits')
 print ('Running 1/f correction on {} to produce {}'.format(cal2file,cal21overffile))
 with fits.open(cal2file) as cal2hdulist:
     if cal2hdulist['PRIMARY'].header['SUBARRAY']=='FULL' or cal2hdulist['PRIMARY'].header['SUBARRAY']=='SUB256':
-        sigma_bgmask=3.0
-        sigma_1fmask=2.0
-        splitamps=False   #Set to True only in a sparse field so each amplifier will be fit separately. 
-        correcteddata = sub1fimaging(cal2hdulist,sigma_bgmask,sigma_1fmask,splitamps)
+        sigma_bgmask = 3.0
+        sigma_1fmask = 2.0
+        splitamps = False   #Set to True only in a sparse field so each amplifier will be fit separately. 
+		usesegmask = True   #Recommend set to True in most cases
+        correcteddata = sub1fimaging(cal2hdulist,sigma_bgmask,sigma_1fmask,splitamps,usesegmask)
         if cal2hdulist['PRIMARY'].header['SUBARRAY']=='FULL':
             cal2hdulist['SCI'].data[4:2044,4:2044] = correcteddata  
         elif cal2hdulist['PRIMARY'].header['SUBARRAY']=='SUB256':
@@ -46,16 +47,60 @@ with fits.open(cal2file) as cal2hdulist:
         cal2hdulist.writeto(cal21overffile, overwrite=True)
 ```
 
+### dosnowballflags.py
+<b>dosnowballflags.py</b>  flags pixels in snowballs - expand saturated ring and diffuse halo jump ring.
+    The GROUPDQ array will be flagged with the SATURATED and JUMP_DET flags.
+    Saturating snowballs early in short ramps can have unflagged central pixels that jump in the previous group.
+    This is called after the regular jump step.
+    The output file is overwritten.
+    You need a working installation of WebbPSF.
+    Works for NIRISS, NIRCam and NIRSpec.
+    Requires checkifstar.py for differentiating between saturated stars and snowballs if imagingmode is True.
+  
+<b>Usage</b>  
+A typical calling sequence is:  
+```python
+from dosnowballflags import snowballflags
+jumpdirfile = './jw01345001001_02201_00001_nrca1_jump.fits'
+filtername = 'F115W'
+npixfind = 40
+satpixradius = 3
+halofactorradius = 2.0
+imagingmode = True
+snowballflags(jumpdirfile,filtername,npixfind,satpixradius,halofactorradius,imagingmode)
+```
+  
+### checkifstar.py
+<b>checkifstar.py</b> builds a WebbPSF model and then compares an image cutout with the model to determine if that cutout corresponds to a star or not. This use the diffraction spikes and PSF asymmetry. Currently works for NIRISS and NIRCam. Will fail on extremely saturated stars, but good on moderately saturated ones.
 
+### dopersistflags.py
+<b>dopersistflags.py</b> flags pixels that reached a very high number of counts in the previous integration.
+    The GROUPDQ array will be flagged with the JUMP_DET flag (this is called after the jump step and snowball flagging so won't interfere with that).
+    Only groups within timeconstant after end of previous integration are flagged.
+    The input file is overwritten.
+    
+<b>Usage</b>  
+A typical calling sequence is:  
+```python
+from dopersistflags import persistflags
+prevrawdirfile = 'jw01222002001_03104_00002_nrs1_uncal.fits' #note can be empty string for first exposure in visit
+rawdirfile =    'jw01222002001_03104_00003_nrs1_uncal.fits'
+jumpdirfile =  'jw01222002001_03104_00003_nrs1_jump.fits'
+countlimit=50000
+timeconstant=1000.0
+persistflags(prevrawdirfile,rawdirfile,jumpdirfile,countlimit,timeconstant)
+```
+  
 ## Scripts for analyzing dark exposures 
 
-<b>makebpm.py</b> generates three bad pixel mask files for the NIRISS detector. 
+<b>makebpmreadnoise.py</b> generates three bad pixel mask files and readnoise reference file for the NIRISS detector. 
 The three masks have different dark noise thresholds appropriate to various types of calibration or science data.
-The routine is robust to high rates of cosmic rays and separates cosmic ray hits from noisy pixels. makebpm.py calls makedarknoisefilesgdq.py.
+The routine is robust to high rates of cosmic rays and separates cosmic ray hits from noisy pixels. makebpmreadnoise.py calls makedarknoisefilesgdq.py.
+Inputs come from the config file, an example is bpmreadnoise_nis006_20220620.cfg.
 
 <b>makedarknoisefilesgdq.py</b> makes dark current and noise images from darks, optionally using GDQ flags to mark locations of cosmic ray jumps.
 
-<b>getipc.py</b> determines a 5x5 IPC kernel image based on spread of charge from hot pixels.
+<b>getipc.py</b> determines 5x5 and 3x3 IPC kernel images based on spread of charge from hot pixels.
 
 <b>makenirissimagingflats.py</b> generates NIRISS imaging flat fields for all filters from one or more integrations per filter that have passed through level 1 pipeline processing.
 
