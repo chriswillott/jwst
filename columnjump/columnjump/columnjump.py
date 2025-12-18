@@ -16,7 +16,7 @@ def detect_columnjumps (input_model, nsigma1jump, nsigma2jumps, outputdiagnostic
     # Load the data arrays that we need from the input model
     output_model = input_model.copy()
     data = input_model.data
-    err  = input_model.err
+    #err  = input_model.err
     gdq  = input_model.groupdq
     pdq  = input_model.pixeldq
 
